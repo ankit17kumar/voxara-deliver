@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voxara Deliver</title>
+<style>
+  :root {
+    --bg: #f5f7f6; --panel: #ffffff; --ink: #14201d; --muted: #5d6b67; --line: #dfe5e3;
+    --teal: #0f766e; --teal-soft: #e3f2f0; --rust: #b45309; --rust-soft: #fbeee2;
+    --red: #b42318; --red-soft: #fdecea; --green: #1a7f37; --green-soft: #e6f4ea;
+    --violet: #6d28d9; --violet-soft: #efe9fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1614; --panel: #16201d; --ink: #e6eeeb; --muted: #95a39f; --line: #26332f;
+      --teal-soft: #11302c; --rust-soft: #33230f; --red-soft: #3a1714; --green-soft: #12301b; --violet-soft: #251a3d; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 18px; margin: 0; }
+  header .tag { color: var(--muted); font-size: 13px; }
+  header .spacer { flex: 1; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button.primary { background: var(--teal); color: #fff; border-color: var(--teal); }
+  button:disabled { opacity: .5; cursor: default; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 14px 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .kpi .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kpi .l { color: var(--muted); font-size: 12px; }
+  main { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; gap: 14px; padding: 0 20px 20px; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+  section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 2px 0 10px; }
+  .orders { max-height: 70vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .order { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .order .id { font-weight: 600; }
+  .order .meta { color: var(--muted); font-size: 12px; grid-column: 1; }
+  .order button { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--teal-soft); color: var(--teal); }
+  .pill.ndr { background: var(--rust-soft); color: var(--rust); }
+  .pill.done { background: var(--green-soft); color: var(--green); }
+  .chat { height: 52vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px; }
+  .msg { max-width: 80%; padding: 8px 11px; border-radius: 12px; }
+  .msg.agent { background: var(--teal-soft); align-self: flex-start; border-bottom-left-radius: 3px; }
+  .msg.customer { background: var(--violet-soft); align-self: flex-end; border-bottom-right-radius: 3px; }
+  .msg .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .msg.system { align-self: center; background: none; color: var(--muted); font-size: 12px; }
+  .composer { display: flex; gap: 8px; margin-top: 10px; }
+  .composer input { flex: 1; font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  .mic.on { background: var(--red); border-color: var(--red); color: #fff; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; color: var(--muted); font-size: 12px; }
+  .row select { font: inherit; padding: 4px; border-radius: 6px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+  .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .suggest button { font-size: 12px; padding: 3px 9px; border-radius: 99px; }
+  .insight { display: grid; gap: 12px; }
+  .insight .block { border-top: 1px solid var(--line); padding-top: 10px; }
+  .insight .block:first-child { border-top: 0; padding-top: 0; }
+  .emo { font-size: 20px; font-weight: 650; text-transform: capitalize; }
+  .bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 6px 0; }
+  .bar > div { height: 100%; background: var(--teal); transition: width .3s; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 3px 8px; font-size: 12.5px; }
+  .kv .k { color: var(--muted); }
+  .kv > span, .cites li { min-width: 0; overflow-wrap: anywhere; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+  .cites li { font-size: 12px; }
+  .trend { display: flex; gap: 4px; flex-wrap: wrap; }
+  .trend span { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); }
+  .angry { color: var(--red); } .frustrated { color: var(--rust); } .happy { color: var(--green); } .anxious, .confused { color: var(--violet); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Voxara Deliver</h1>
+  <span class="tag">COD confirmation and NDR recovery agent · MVP</span>
+  <span class="spacer"></span>
+  <span class="tag" id="health"></span>
+  <button id="reset">Reset demo data</button>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<main>
+  <section>
+    <h2>Orders needing a call</h2>
+    <div class="orders" id="orders"></div>
+  </section>
+
+  <section>
+    <h2 id="callTitle">Pick an order to start a call</h2>
+    <div class="chat" id="chat"></div>
+    <div class="composer">
+      <button class="mic" id="mic" title="Speak (Chrome or Edge)" disabled>🎙 Speak</button>
+      <input id="text" placeholder="Type what the customer says, e.g. kal shaam ko bhej do" disabled>
+      <button class="primary" id="send" disabled>Send</button>
+    </div>
+    <div class="row">
+      <label>Voice language
+        <select id="voiceLang"><option value="hi-IN">Hindi / Hinglish (hi-IN)</option><option value="en-IN">English (en-IN)</option></select>
+      </label>
+      <label><input type="checkbox" id="speak" checked> Agent speaks aloud</label>
+    </div>
+    <div class="suggest" id="suggest"></div>
+  </section>
+
+  <section class="insight">
+    <div class="block">
+      <h2>Caller emotion</h2>
+      <div class="emo" id="emoLabel">–</div>
+      <div class="bar"><div id="emoBar" style="width:0"></div></div>
+      <div class="kv">
+        <span class="k">Sentiment</span><span id="emoSent" class="mono">–</span>
+        <span class="k">Trend</span><span id="emoTrend">–</span>
+        <span class="k">Cues</span><span id="emoCues" class="mono">–</span>
+      </div>
+      <div class="trend" id="emoHistory" style="margin-top:6px"></div>
+    </div>
+    <div class="block">
+      <h2>How the agent responds</h2>
+      <div class="kv">
+        <span class="k">Tone</span><span id="stTone">–</span>
+        <span class="k">Voice speed</span><span id="stRate" class="mono">–</span>
+        <span class="k">Offer human</span><span id="stHuman">–</span>
+        <span class="k">Escalate now</span><span id="stEsc">–</span>
+      </div>
+    </div>
+    <div class="block">
+      <h2>Understanding and knowledge</h2>
+      <div class="kv">
+        <span class="k">Intent</span><span id="nluIntent" class="mono">–</span>
+        <span class="k">Language</span><span id="nluLang" class="mono">–</span>
+        <span class="k">Slots</span><span id="nluSlots" class="mono">–</span>
+        <span class="k">RAG confidence</span><span id="ragConf" class="mono">–</span>
+        <span class="k">Turn latency</span><span id="lat" class="mono">–</span>
+      </div>
+      <ul class="cites mono" id="cites"></ul>
+    </div>
+    <div class="block">
+      <h2>Actions written to OMS</h2>
+      <ul class="cites mono" id="actions"></ul>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = async (path, body) => {
+  const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+  if (!r.ok) throw new Error((await r.json()).detail || r.status);
+  return r.json();
+};
+let call = null, lastStyle = { tts_rate: 1, tts_pitch: 1 };
+
+const SUGGEST = {
+  cod_confirmation: ["haan ji confirm karo", "itne zyada paise kyun?", "UPI link bhej do", "mujhe nahi chahiye", "nahi cash hi dunga"],
+  ndr_recovery: ["kal shaam ko bhej do", "delivery boy ne call hi nahi kiya, bakwas service!", "Hanuman mandir ke paas", "I refused it", "third time I am telling you, USELESS!!", "manager se baat karao", "please do not call me again"],
+};
+
+async function loadOrders() {
+  const list = await api("/api/orders");
+  $("orders").innerHTML = "";
+  for (const o of list) {
+    const open = ["NDR", "CONFIRMATION_PENDING"].includes(o.status);
+    const el = document.createElement("div");
+    el.className = "order";
+    el.innerHTML = `<span class="id">${o.order_id} <span class="pill ${o.status === "NDR" ? "ndr" : open ? "" : "done"}">${o.status.replaceAll("_", " ").toLowerCase()}</span></span>
+      <span class="meta">${o.customer_name} · ${o.city} · ${o.product} · ₹${o.amount}${o.ndr_reason ? "<br>NDR: " + o.ndr_reason : ""}</span>`;
+    const b = document.createElement("button");
+    b.textContent = "Call"; b.disabled = !open;
+    b.onclick = () => startCall(o.order_id);
+    el.appendChild(b);
+    $("orders").appendChild(el);
+  }
+}
+
+async function loadKpis() {
+  const k = await api("/api/kpis");
+  const tiles = [
+    ["Calls completed", k.calls_completed],
+    ["Containment", k.containment_pct == null ? "–" : k.containment_pct + "%"],
+    ["Action completion", k.action_completion_pct == null ? "–" : k.action_completion_pct + "%"],
+    ["NDR recovered", k.ndr_recovery_pct == null ? "–" : k.ndr_recovery_pct + "%"],
+    ["Est. RTO cost avoided", "₹" + k.estimated_rto_value_saved_inr.toLocaleString("en-IN")],
+    ["Avg turn latency", k.avg_turn_latency_ms == null ? "–" : k.avg_turn_latency_ms + " ms"],
+  ];
+  $("kpis").innerHTML = tiles.map(([l, v]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+}
+
+function add(role, text, sub) {
+  const el = document.createElement("div");
+  el.className = "msg " + role;
+  el.textContent = text;
+  if (sub) { const s = document.createElement("div"); s.className = "sub"; s.textContent = sub; el.appendChild(s); }
+  $("chat").appendChild(el);
+  $("chat").scrollTop = 1e9;
+}
+
+function speak(text, style) {
+  if (!$("speak").checked || !("speechSynthesis" in window) || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace("₹", "rupees "));
+  u.lang = $("voiceLang").value;
+  u.rate = style?.tts_rate || 1; u.pitch = style?.tts_pitch || 1;
+  const v = speechSynthesis.getVoices().find((v) => v.lang === u.lang);
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+
+async function startCall(orderId) {
+  const r = await api("/api/calls", { order_id: orderId });
+  call = r;
+  $("chat").innerHTML = "";
+  $("emoHistory").innerHTML = ""; $("actions").innerHTML = ""; $("cites").innerHTML = "";
+  $("callTitle").textContent = `Call · ${orderId} · ${r.workflow.replace("_", " ")}`;
+  $("voiceLang").value = r.lang.startsWith("hi") ? "hi-IN" : "en-IN";
+  add("system", "Call started. Compliance: 9 AM–9 PM window, identity and recording disclosure included.");
+  add("agent", r.reply.text);
+  speak(r.reply.text, r.reply.style);
+  for (const id of ["text", "send", "mic"]) $(id).disabled = false;
+  $("suggest").innerHTML = "";
+  for (const s of SUGGEST[r.workflow]) {
+    const b = document.createElement("button"); b.textContent = s; b.onclick = () => send(s);
+    $("suggest").appendChild(b);
+  }
+  $("text").focus();
+}
+
+async function send(text, prosody) {
+  if (!call || !text.trim()) return;
+  $("text").value = "";
+  const r = await api(`/api/calls/${call.call_id}/turn`, { text, prosody });
+  const e = r.emotion;
+  add("customer", text, e ? `${e.label}${e.intensity ? " · " + Math.round(e.intensity * 100) + "%" : ""}` : "");
+  if (r.text) add("agent", r.text, r.style?.tone);
+  speak(r.text, r.style);
+  render(r);
+  if (r.ended) {
+    add("system", `Call ended · outcome: ${r.outcome}`);
+    for (const id of ["text", "send", "mic"]) $(id).disabled = true;
+    $("suggest").innerHTML = "";
+    call = null;
+    loadOrders();
+  }
+  loadKpis();
+}
+
+function render(r) {
+  const e = r.emotion || {}, st = r.style || {}, n = r.nlu || {};
+  $("emoLabel").textContent = e.label || "–";
+  $("emoLabel").className = "emo " + (e.label || "");
+  $("emoBar").style.width = Math.round((e.intensity || 0) * 100) + "%";
+  $("emoSent").textContent = e.sentiment ?? "–";
+  $("emoTrend").textContent = e.trend || "–";
+  $("emoCues").textContent = (e.cues || []).join(", ") || "none";
+  if (e.label) { const s = document.createElement("span"); s.className = e.label; s.textContent = e.label; $("emoHistory").appendChild(s); }
+  $("stTone").textContent = st.tone || "–";
+  $("stRate").textContent = st.tts_rate ? `${st.tts_rate}× speed, ${st.tts_pitch}× pitch` : "–";
+  $("stHuman").textContent = st.offer_human ? "yes" : "no";
+  $("stEsc").textContent = st.escalate_now ? `yes (${st.reason})` : "no";
+  $("nluIntent").textContent = `${n.intent || "–"}${n.source === "llm" ? " (LLM)" : ""}`;
+  $("nluLang").textContent = n.lang || "–";
+  if (n.lang && n.lang !== "en") $("voiceLang").value = "hi-IN";
+  $("nluSlots").textContent = n.slots && Object.keys(n.slots).length ? JSON.stringify(n.slots) : "none";
+  $("ragConf").textContent = r.rag ? `${r.rag.confidence} ${r.rag.grounded ? "(grounded)" : "(below threshold)"}${r.rag.cached ? " · cached" : ""}` : "not needed";
+  $("lat").textContent = r.latency_ms + " ms (agent logic, excludes speech)";
+  $("cites").innerHTML = (r.rag?.citations || []).map((c) => `<li>${c}</li>`).join("");
+  for (const a of r.actions || []) {
+    const li = document.createElement("li");
+    li.textContent = a.type === "oms_update" ? `${a.action} ${a.fields ? JSON.stringify(a.fields) : ""}` : `${a.type}${a.template ? ": " + a.template : ""}${a.context ? ": " + a.context.reason : ""}`;
+    $("actions").appendChild(li);
+  }
+}
+
+// ---- Browser speech input with rough prosody (energy and variability) ----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, audioCtx = null, analyser = null, levels = [], t0 = 0, raf = 0;
+async function startMic() {
+  if (!SR) { alert("Speech input needs Chrome or Edge. You can still type."); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioCtx = new AudioContext();
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024;
+    audioCtx.createMediaStreamSource(stream).connect(analyser);
+    const buf = new Float32Array(analyser.fftSize);
+    levels = []; t0 = performance.now();
+    const tick = () => { analyser.getFloatTimeDomainData(buf); let s = 0; for (const x of buf) s += x * x; levels.push(Math.sqrt(s / buf.length)); raf = requestAnimationFrame(tick); };
+    tick();
+    rec = new SR(); rec.lang = $("voiceLang").value; rec.interimResults = false;
+    rec.onresult = (ev) => {
+      const text = ev.results[0][0].transcript;
+      const secs = (performance.now() - t0) / 1000;
+      const voiced = levels.filter((l) => l > 0.01);
+      const mean = voiced.reduce((a, b) => a + b, 0) / (voiced.length || 1);
+      const sd = Math.sqrt(voiced.reduce((a, b) => a + (b - mean) ** 2, 0) / (voiced.length || 1));
+      const prosody = { energy: Math.min(1, mean * 8), pitch_var: Math.min(1, (sd / (mean || 1)) ), speech_rate: text.split(/\s+/).length / Math.max(secs, 0.5) };
+      send(text, prosody);
+    };
+    rec.onend = stopMic;
+    rec.start();
+    $("mic").classList.add("on"); $("mic").textContent = "● Listening";
+    stream.getTracks().forEach((t) => rec.addEventListener("end", () => t.stop()));
+  } catch (err) { alert("Microphone not available: " + err.message); }
+}
+function stopMic() {
+  cancelAnimationFrame(raf); audioCtx?.close(); audioCtx = null;
+  $("mic").classList.remove("on"); $("mic").textContent = "🎙 Speak";
+}
+
+$("mic").onclick = () => (rec && $("mic").classList.contains("on") ? rec.stop() : startMic());
+$("send").onclick = () => send($("text").value);
+$("text").addEventListener("keydown", (e) => e.key === "Enter" && send($("text").value));
+$("reset").onclick = async () => { await api("/api/reset", {}); call = null; $("chat").innerHTML = ""; loadOrders(); loadKpis(); };
+api("/api/health").then((h) => ($("health").textContent = `LLM: ${h.llm} · ${h.kb_chunks} policy chunks`));
+loadOrders(); loadKpis();
+</script>
+</body>
+</html>
